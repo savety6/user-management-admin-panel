@@ -8,7 +8,7 @@ The starting point was a rough AI-generated wireframe. I audited it for UX probl
 
 | Version | Platform | URL |
 |---|---|---|
-| v0 | [v0](https://v0.dev) by Vercel | [/](https://user-management-admin-panel.netlify.app/) |
+| Final / v0 | [v0](https://v0.dev) by Vercel | [/](https://user-management-admin-panel.netlify.app/) |
 | v1 | [Lovable](https://lovable.dev) | [/v1](https://user-management-admin-panel.netlify.app/v1) |
 | v2 | Claude Code (`/frontend-design` skill) | [/v2](https://user-management-admin-panel.netlify.app/v2) |
 
@@ -53,13 +53,14 @@ The starting point was a rough AI-generated wireframe. I audited it for UX probl
 ## Features
 
 - Three fully functional UI versions at `/`, `/v1`, and `/v2` — each a distinct redesign of the same dashboard
-- Live data fetched from [JSONPlaceholder](https://jsonplaceholder.typicode.com) via RTK Query
+- [JSONPlaceholder](https://jsonplaceholder.typicode.com) used as a mock seed source, with dashboard behavior handled client-side
 - Optimistic updates — edits and deletes reflect instantly without waiting for the (mock) API response
-- Sidebar navigation with sections for Users, Teams, Roles & Permissions, Audit Log, and Settings
+- Sidebar-style tab navigation with sections for Users, Teams, Roles & Permissions, Audit Log, and Settings
 - Stats bar showing Total, Active, Pending, and Suspended user counts
 - User table with avatar (initials-based), name, username, email, role badge, status badge, company, and location
 - Inline editing — hover any name, username, or email cell to edit it directly in the table
 - Full edit modal with all user fields, grouped sections, and form validation (react-hook-form + Zod)
+- Invite User entry point included as the create flow placeholder for adding new users
 - Delete confirmation dialog
 - Sortable columns — click any column header to sort ascending or descending
 - Search by name, email, username, company, or city
@@ -76,7 +77,9 @@ The starting point was a rough AI-generated wireframe. I audited it for UX probl
 
 The application is a frontend-only prototype with no custom backend, no authentication, and no database.
 
-User data is fetched from the public [JSONPlaceholder](https://jsonplaceholder.typicode.com) REST API. Mutations (edits and deletes) are sent to the API, which returns a fake success response but does not actually persist changes server-side. To prevent the UI from reverting after a mutation, the project uses **optimistic updates** via RTK Query's `onQueryStarted` hook — the cache is patched immediately and rolled back automatically if the request fails. Changes therefore appear permanent within a session but reset on page refresh.
+[JSONPlaceholder](https://jsonplaceholder.typicode.com) is used as a mock seed source instead of a real production backend. The assignment requested a frontend-only prototype, so the application does not rely on real persistence. Meaningful dashboard behavior such as searching, filtering, sorting, editing, deleting, pagination, selection, loading states, and optimistic UI feedback is handled in the browser.
+
+Mutations are sent to JSONPlaceholder, which returns a fake success response but does not actually persist changes server-side. To prevent the UI from reverting after a mutation, the project uses **optimistic updates** via RTK Query's `onQueryStarted` hook — the cache is patched immediately and rolled back automatically if the request fails. Changes therefore appear permanent within a session but reset on page refresh.
 
 There is no authentication. The user is assumed to already be logged in as a system administrator.
 
@@ -118,7 +121,7 @@ I added a delete confirmation dialog. The user must explicitly confirm before a 
 The wireframe did not properly define how adding or editing a user should happen.
 
 **Fix:**  
-I implemented a modal-based edit flow and an inline editing mode for individual fields directly in the table. This keeps the admin in context without navigating away. An Invite User action is also present as a future-ready hook.
+I implemented a modal-based edit flow and an inline editing mode for individual fields directly in the table. This keeps the admin in context without navigating away. An Invite User entry point is included as the create flow placeholder, showing where adding a new user would be handled in the full product flow.
 
 ---
 
@@ -145,7 +148,7 @@ I added an empty state that explains when no users match the current search or f
 The rough design did not clearly separate page title, primary actions, filters, navigation, and user data.
 
 **Fix:**  
-I improved the layout hierarchy by adding a clear page header, a primary action button, grouped filter controls, sidebar navigation with distinct sections, and visually distinct table rows with status and role badges.
+I improved the layout hierarchy by adding a clear page header, a primary action button, grouped filter controls, sidebar-style tab navigation with distinct sections, and visually distinct table rows with status and role badges.
 
 ---
 
@@ -190,7 +193,7 @@ I used accessible UI primitives where possible, added visible labels, ensured di
 Although the assignment uses mocked client-side data, the original design did not consider loading or error states that would be required in a production version.
 
 **Fix:**  
-Since this prototype does not fetch remote data, loading and server error states are not functionally required. However, the interface structure is prepared so these states could be added easily in a real implementation.
+Because this implementation uses JSONPlaceholder as a mock seed source, I added skeleton loading states while data is fetched. In a production version, I would add more complete error recovery, retry actions, and offline handling.
 
 ---
 
@@ -201,11 +204,12 @@ The main goal of the redesign was to make the dashboard feel like a practical ad
 Key improvements:
 
 - Added a clear page header with title, description, and primary action
-- Used sidebar navigation to organize the administration sections
+- Used sidebar-style tab navigation to organize the administration sections
 - Added search and filters above the user table
 - Used badges for roles and statuses to make them scannable at a glance
 - Added an inline edit mode for individual fields directly in the table
 - Added a full edit modal with grouped fields and form validation
+- Added an Invite User entry point as the create flow placeholder
 - Added confirmation before deleting a user
 - Added form validation and clear error messages
 - Added empty states for no matching results
@@ -217,7 +221,7 @@ Key improvements:
 
 ## Dashboard Sections
 
-Each version shares the same sidebar navigation structure:
+Each version shares the same sidebar-style tab navigation structure:
 
 - **Overview** — placeholder
 - **Users** — fully functional user management (the primary working section)
@@ -226,7 +230,7 @@ Each version shares the same sidebar navigation structure:
 - **Audit Log** — placeholder
 - **Settings** — placeholder
 
-All routes except Users show a "Coming soon" state. The sidebar structure is intentional — it communicates the intended information architecture without overbuilding features outside the assignment scope.
+All routes except Users show a "Coming soon" state. I used sidebar-style tab navigation instead of horizontal tabs because the number of dashboard sections is relatively large. This keeps the layout more scalable on desktop while still preserving the assignment idea of separated dashboard sections without overbuilding features outside the requested scope.
 
 ---
 
@@ -263,8 +267,9 @@ type User = {
 
 ## Client-Side State
 
-User data is fetched from the [JSONPlaceholder](https://jsonplaceholder.typicode.com) REST API and cached in the Redux store via RTK Query. The following operations are handled client-side:
+User data is seeded from the [JSONPlaceholder](https://jsonplaceholder.typicode.com) REST API and cached in the Redux store via RTK Query. The following operations are handled client-side:
 
+- Opening the Invite User create flow placeholder
 - Editing a user (inline cell edit or full modal)
 - Deleting a user
 - Searching users
@@ -313,7 +318,7 @@ Each platform produced its own interpretation of the dashboard. The results were
 
 1. UX audit and product reasoning
 2. Clean dashboard structure across three distinct visual directions
-3. Edit and delete user flows
+3. Edit, delete, and invite-user entry flows
 4. Search, filtering, sorting, and pagination
 5. Form validation
 6. Empty and loading states
@@ -375,10 +380,17 @@ Preview the production build:
 bun run preview
 ```
 
+If Bun is not installed, the project can also be run with npm:
+
+```bash
+npm install
+npm run dev
+```
+
 ---
 
 ## Notes
 
 This project is a frontend prototype built to compare three AI-assisted implementation approaches side by side. It is not production-ready — there is no custom backend, no authentication, and no persistent storage.
 
-The implementation focuses on practical UX decisions, real data fetching with optimistic updates, and three distinct visual directions that can be evaluated independently at `/`, `/v1`, and `/v2`.
+The implementation focuses on practical UX decisions, mock-seeded data with optimistic client-side updates, and three distinct visual directions that can be evaluated independently at `/`, `/v1`, and `/v2`.
