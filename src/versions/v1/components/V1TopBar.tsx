@@ -1,8 +1,16 @@
-import { Search, Bell } from 'lucide-react'
+import { Search, Bell, Menu } from 'lucide-react'
 
-export default function V1TopBar() {
+export default function V1TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
   return (
     <div className="v1-topbar">
+      {/* Mobile hamburger */}
+      <button
+        className="v1-mobile-only v1-btn-icon size-8 rounded-lg shrink-0"
+        style={{ color: 'var(--v1-text-muted)' }}
+        onClick={onMenuClick}
+      >
+        <Menu size={18} strokeWidth={1.75} />
+      </button>
       {/* Search */}
       <div
         className="v1-topbar-search-wrap flex flex-1 items-center gap-2 rounded-lg border px-3 py-2 transition-all"

@@ -239,7 +239,7 @@ export default function V1UsersPage() {
 
       {/* Table */}
       <div
-        className="rounded-xl overflow-hidden"
+        className="v1-table-container rounded-xl overflow-hidden"
         style={{ background: 'var(--v1-surface)', border: '1px solid var(--v1-border)' }}
       >
         {isLoading ? (

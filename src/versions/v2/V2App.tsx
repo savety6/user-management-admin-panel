@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -6,13 +7,18 @@ import V2TopBar from './components/V2TopBar'
 import './v2.css'
 
 export default function V2App() {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
   return (
     <TooltipProvider delayDuration={300}>
       <div data-ui-version="v2" className="v2-app">
+        {sidebarOpen && (
+          <div className="v2-mobile-overlay" onClick={() => setSidebarOpen(false)} />
+        )}
         <div className="v2-layout">
-          <V2Sidebar />
+          <V2Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
           <div className="v2-main">
-            <V2TopBar />
+            <V2TopBar onMenuClick={() => setSidebarOpen(true)} />
             <div className="v2-content">
               <Outlet />
             </div>

@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   FileText,
   Settings,
+  X,
 } from 'lucide-react'
 
 interface NavItemDef {
@@ -67,9 +68,9 @@ function SidebarSection({ label, items }: { label: string; items: NavItemDef[] }
   )
 }
 
-export default function V1Sidebar() {
+export default function V1Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }) {
   return (
-    <aside className="v1-sidebar">
+    <aside className={`v1-sidebar${isOpen ? ' open' : ''}`}>
       {/* Brand */}
       <div
         className="flex items-center gap-2.5 px-4 py-4"
@@ -78,7 +79,7 @@ export default function V1Sidebar() {
         <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-indigo-600">
           <Cloud size={13} strokeWidth={2.5} className="text-white" />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div
             className="text-[13px] font-semibold tracking-tight"
             style={{ color: 'var(--v1-text)' }}
@@ -89,6 +90,13 @@ export default function V1Sidebar() {
             Enterprise
           </div>
         </div>
+        <button
+          className="v1-mobile-only v1-btn-icon size-7 rounded-lg shrink-0"
+          style={{ color: 'var(--v1-text-faint)' }}
+          onClick={onClose}
+        >
+          <X size={14} />
+        </button>
       </div>
 
       {/* Nav */}
