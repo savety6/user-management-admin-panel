@@ -2,6 +2,7 @@ import type { ElementType } from 'react'
 import {
   Hexagon,
   ChevronUp,
+  X,
 } from 'lucide-react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
@@ -15,6 +16,8 @@ import {
 
 interface SidebarProps {
   basePath: string
+  isOpen?: boolean
+  onClose?: () => void
 }
 
 interface NavItemProps {
@@ -53,12 +56,15 @@ function isItemActive(pathname: string, basePath: string, route: AppRoute) {
   return isRouteActive(normalizedPathname, basePath, route)
 }
 
-export default function Sidebar({ basePath }: SidebarProps) {
+export default function Sidebar({ basePath, isOpen = false, onClose }: SidebarProps) {
   const location = useLocation()
 
   return (
     <aside
-      className="sidebar-scroll flex h-full w-60 shrink-0 flex-col overflow-y-auto"
+      className={cn(
+        'v0-sidebar-shell sidebar-scroll flex h-full w-60 shrink-0 flex-col overflow-y-auto',
+        isOpen && 'open',
+      )}
       style={{ background: 'var(--sidebar)', borderRight: '1px solid var(--sidebar-border)' }}
     >
       {/* Brand */}
@@ -69,10 +75,17 @@ export default function Sidebar({ basePath }: SidebarProps) {
         <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-indigo-600">
           <Hexagon size={14} strokeWidth={2.5} className="text-white" />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="text-[13px] font-semibold text-white tracking-tight">AdminPanel</div>
           <div className="mt-0.5 text-[10px] text-[var(--app-sidebar-meta-text)]">Enterprise · v0</div>
         </div>
+        <button
+          onClick={onClose}
+          className="v0-mobile-close flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-white/10"
+          style={{ color: '#9CA3AF', display: 'none' }}
+        >
+          <X size={15} />
+        </button>
       </div>
 
       {/* Primary nav */}

@@ -220,6 +220,52 @@
   color: var(--v1-text);
 }
 
+/* ─── Mobile ──────────────────────────────────────────────── */
+.v1-mobile-only {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .v1-mobile-only {
+    display: flex;
+  }
+
+  .v1-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.08);
+  }
+
+  .v1-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .v1-mobile-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: rgba(0, 0, 0, 0.35);
+  }
+
+  .v1-content {
+    padding: 1.25rem 1rem;
+  }
+
+  /* Table horizontal scroll on mobile */
+  .v1-table-container {
+    overflow-x: auto;
+  }
+
+  .v1-table-container table {
+    min-width: 640px;
+  }
+}
+
 /* Scrollbar */
 .v1-sidebar::-webkit-scrollbar {
   width: 4px;

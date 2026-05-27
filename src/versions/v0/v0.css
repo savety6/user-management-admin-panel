@@ -1,3 +1,58 @@
+/* ─── mobile overlay ─────────────────────────────────────── */
+.v0-mobile-topbar {
+  display: none;
+}
+
+.v0-mobile-overlay {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .v0-mobile-close {
+    display: flex !important;
+  }
+
+  .v0-mobile-topbar {
+    display: flex;
+    align-items: center;
+    height: 48px;
+    padding: 0 1rem;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--sidebar-border);
+    background: var(--sidebar);
+    gap: 0.75rem;
+  }
+
+  .v0-mobile-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: rgba(0, 0, 0, 0.45);
+  }
+}
+
+/* ─── v0 sidebar mobile ───────────────────────────────────── */
+.v0-sidebar-shell {
+  transition: transform 0.25s ease;
+}
+
+@media (max-width: 767px) {
+  .v0-sidebar-shell {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 50;
+    transform: translateX(-100%);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
+  }
+
+  .v0-sidebar-shell.open {
+    transform: translateX(0);
+  }
+}
+
 .v0-app {
   --app-sidebar-item-active-bg: rgba(255, 255, 255, 0.08);
   --app-sidebar-item-active-text: #ffffff;
