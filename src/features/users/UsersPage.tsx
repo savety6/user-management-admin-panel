@@ -92,7 +92,7 @@ export default function UsersPage() {
             users={users}
             isLoading={isLoading}
             filters={filters}
-            onEdit={(user) => setEditingUser(user)}
+            onEditAccess={(user) => setEditingUser(user)}
             onDelete={handleDelete}
             onClearFilters={() => setFilters({ search: '', role: 'all', status: 'all' })}
           />

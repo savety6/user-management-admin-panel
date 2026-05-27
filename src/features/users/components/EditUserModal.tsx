@@ -32,9 +32,9 @@ import { getUserRole, getUserStatus, splitName } from '../utils'
 import UserAvatar from './UserAvatar'
 
 const schema = z.object({
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
-  username: z.string().min(1, 'Username is required').regex(/^\S+$/, 'No spaces allowed'),
+  firstName: z.string().min(1, 'Required'),
+  lastName: z.string().min(1, 'Required'),
+  username: z.string().min(1, 'Required').regex(/^\S+$/, 'No spaces allowed'),
   email: z.string().email('Invalid email address'),
   phone: z.string().optional(),
   website: z.string().optional(),
@@ -57,10 +57,10 @@ interface EditUserModalProps {
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null
-  return <p className="text-[12px] text-red-500 mt-1">{message}</p>
+  return <p className="text-[12px] text-red-500 mt-0.5">{message}</p>
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
       {children}
@@ -68,12 +68,14 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   )
 }
 
+const PERMISSIONS = [
+  { name: 'canManageUsers' as const, label: 'Manage Users', desc: 'Create, edit, and delete users' },
+  { name: 'canViewReports' as const, label: 'View Reports', desc: 'Access analytics and audit logs' },
+  { name: 'canExportData' as const, label: 'Export Data', desc: 'Download CSV and data exports' },
+]
+
 export default function EditUserModal({ user, open, onClose }: EditUserModalProps) {
   const [updateUser, { isLoading }] = useUpdateUserMutation()
-
-  const { firstName: defFirst, lastName: defLast } = user ? splitName(user.name) : { firstName: '', lastName: '' }
-  const defRole = user ? getUserRole(user.id) : 'viewer'
-  const defStatus = user ? getUserStatus(user.id) : 'active'
 
   const {
     register,
@@ -84,52 +86,20 @@ export default function EditUserModal({ user, open, onClose }: EditUserModalProp
     formState: { errors, isDirty },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      firstName: defFirst,
-      lastName: defLast,
-      username: user?.username ?? '',
-      email: user?.email ?? '',
-      phone: user?.phone ?? '',
-      website: user?.website ?? '',
-      role: defRole,
-      status: defStatus,
-      companyName: user?.company.name ?? '',
-      city: user?.address.city ?? '',
-      canManageUsers: defRole === 'admin',
-      canViewReports: defRole !== 'viewer',
-      canExportData: defRole === 'admin',
-    },
+    defaultValues: getDefaults(user),
   })
 
   useEffect(() => {
-    if (user) {
-      const { firstName, lastName } = splitName(user.name)
-      const role = getUserRole(user.id)
-      reset({
-        firstName,
-        lastName,
-        username: user.username,
-        email: user.email,
-        phone: user.phone,
-        website: user.website,
-        role,
-        status: getUserStatus(user.id),
-        companyName: user.company.name,
-        city: user.address.city,
-        canManageUsers: role === 'admin',
-        canViewReports: role !== 'viewer',
-        canExportData: role === 'admin',
-      })
-    }
+    if (user) reset(getDefaults(user))
   }, [user, reset])
 
-  const watchedFirstName = watch('firstName')
-  const watchedLastName = watch('lastName')
-  const previewName = [watchedFirstName, watchedLastName].filter(Boolean).join(' ') || (user?.name ?? '')
+  const firstName = watch('firstName')
+  const lastName = watch('lastName')
+  const previewName = [firstName, lastName].filter(Boolean).join(' ') || (user?.name ?? '')
 
   const onSubmit = async (values: FormValues) => {
     if (!user) return
-    const updatedUser: User = {
+    const updated: User = {
       ...user,
       name: `${values.firstName} ${values.lastName}`.trim(),
       username: values.username,
@@ -140,17 +110,17 @@ export default function EditUserModal({ user, open, onClose }: EditUserModalProp
       address: { ...user.address, city: values.city ?? user.address.city },
     }
     try {
-      await updateUser(updatedUser).unwrap()
-      toast.success('User updated successfully', {
-        description: `${updatedUser.name}'s profile has been saved.`,
+      await updateUser(updated).unwrap()
+      toast.success('User updated', {
+        description: `${updated.name}'s profile has been saved.`,
       })
       onClose()
     } catch {
-      toast.error('Failed to update user', {
-        description: 'Please try again.',
-      })
+      toast.error('Failed to update user', { description: 'Please try again.' })
     }
   }
+
+  if (!user) return null
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -158,21 +128,20 @@ export default function EditUserModal({ user, open, onClose }: EditUserModalProp
         <DialogHeader className="px-6 pt-6 pb-0">
           <DialogTitle className="text-[16px] font-semibold">Edit User</DialogTitle>
           <DialogDescription className="text-[13px]">
-            Update {user?.name ?? 'user'}'s profile, role, and access permissions.
+            Update profile details, role, and access permissions for {user.name}.
           </DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="max-h-[calc(90vh-140px)]">
           <form id="edit-user-form" onSubmit={handleSubmit(onSubmit)}>
             <div className="px-6 py-5 space-y-6">
-              {/* Avatar section */}
+
+              {/* Avatar preview */}
               <div className="flex items-center gap-4 rounded-xl bg-[#F8F9FA] border border-[#E9EAEC] p-4">
                 <UserAvatar name={previewName} size="xl" />
                 <div>
-                  <p className="text-[13.5px] font-semibold text-foreground leading-snug">{previewName}</p>
-                  <p className="text-[12px] text-muted-foreground mb-2.5">
-                    {user?.email}
-                  </p>
+                  <p className="text-[13.5px] font-semibold text-foreground">{previewName}</p>
+                  <p className="text-[12px] text-muted-foreground mb-2.5">{user.email}</p>
                   <Button type="button" variant="outline" size="sm" className="h-7 text-[12px]">
                     <Upload size={12} className="mr-1.5" />
                     Change Photo
@@ -182,9 +151,9 @@ export default function EditUserModal({ user, open, onClose }: EditUserModalProp
 
               {/* Personal information */}
               <div>
-                <SectionTitle>Personal Information</SectionTitle>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                <SectionLabel>Personal Information</SectionLabel>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="grid gap-1.5">
                       <Label htmlFor="firstName" className="text-[13px]">First Name</Label>
                       <Input
@@ -230,24 +199,14 @@ export default function EditUserModal({ user, open, onClose }: EditUserModalProp
                     <FieldError message={errors.email?.message} />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="grid gap-1.5">
                       <Label htmlFor="phone" className="text-[13px]">Phone</Label>
-                      <Input
-                        id="phone"
-                        {...register('phone')}
-                        className="h-9 text-[13px]"
-                        placeholder="+1 (555) 000-0000"
-                      />
+                      <Input id="phone" {...register('phone')} className="h-9 text-[13px]" placeholder="+1 (555) 000-0000" />
                     </div>
                     <div className="grid gap-1.5">
                       <Label htmlFor="website" className="text-[13px]">Website</Label>
-                      <Input
-                        id="website"
-                        {...register('website')}
-                        className="h-9 text-[13px]"
-                        placeholder="example.com"
-                      />
+                      <Input id="website" {...register('website')} className="h-9 text-[13px]" placeholder="example.com" />
                     </div>
                   </div>
                 </div>
@@ -255,10 +214,10 @@ export default function EditUserModal({ user, open, onClose }: EditUserModalProp
 
               <Separator />
 
-              {/* Role & access */}
+              {/* Role & Access */}
               <div>
-                <SectionTitle>Role &amp; Access</SectionTitle>
-                <div className="grid grid-cols-2 gap-4">
+                <SectionLabel>Role &amp; Access</SectionLabel>
+                <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-1.5">
                     <Label className="text-[13px]">Role</Label>
                     <Controller
@@ -266,9 +225,7 @@ export default function EditUserModal({ user, open, onClose }: EditUserModalProp
                       control={control}
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="h-9 text-[13px]">
-                            <SelectValue placeholder="Select role" />
-                          </SelectTrigger>
+                          <SelectTrigger className="h-9 text-[13px]"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="admin" className="text-[13px]">Admin</SelectItem>
                             <SelectItem value="editor" className="text-[13px]">Editor</SelectItem>
@@ -285,9 +242,7 @@ export default function EditUserModal({ user, open, onClose }: EditUserModalProp
                       control={control}
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="h-9 text-[13px]">
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
+                          <SelectTrigger className="h-9 text-[13px]"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="active" className="text-[13px]">Active</SelectItem>
                             <SelectItem value="pending" className="text-[13px]">Pending</SelectItem>
@@ -304,13 +259,9 @@ export default function EditUserModal({ user, open, onClose }: EditUserModalProp
 
               {/* Permissions */}
               <div>
-                <SectionTitle>Permissions</SectionTitle>
+                <SectionLabel>Permissions</SectionLabel>
                 <div className="space-y-3 rounded-xl border border-[#E9EAEC] bg-[#F9FAFB] p-4">
-                  {[
-                    { name: 'canManageUsers' as const, label: 'Manage Users', desc: 'Create, edit, and delete users' },
-                    { name: 'canViewReports' as const, label: 'View Reports', desc: 'Access analytics and audit logs' },
-                    { name: 'canExportData' as const, label: 'Export Data', desc: 'Download CSV and data exports' },
-                  ].map((perm) => (
+                  {PERMISSIONS.map((perm) => (
                     <div key={perm.name} className="flex items-center justify-between gap-4">
                       <div>
                         <p className="text-[13px] font-medium text-foreground">{perm.label}</p>
@@ -320,10 +271,7 @@ export default function EditUserModal({ user, open, onClose }: EditUserModalProp
                         name={perm.name}
                         control={control}
                         render={({ field }) => (
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
                         )}
                       />
                     </div>
@@ -331,43 +279,29 @@ export default function EditUserModal({ user, open, onClose }: EditUserModalProp
                 </div>
               </div>
 
-              {/* Organisation */}
               <Separator />
+
+              {/* Organisation */}
               <div>
-                <SectionTitle>Organisation</SectionTitle>
-                <div className="grid grid-cols-2 gap-4">
+                <SectionLabel>Organisation</SectionLabel>
+                <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-1.5">
                     <Label htmlFor="companyName" className="text-[13px]">Team / Company</Label>
-                    <Input
-                      id="companyName"
-                      {...register('companyName')}
-                      className="h-9 text-[13px]"
-                      placeholder="Acme Corp"
-                    />
+                    <Input id="companyName" {...register('companyName')} className="h-9 text-[13px]" placeholder="Acme Corp" />
                   </div>
                   <div className="grid gap-1.5">
                     <Label htmlFor="city" className="text-[13px]">City</Label>
-                    <Input
-                      id="city"
-                      {...register('city')}
-                      className="h-9 text-[13px]"
-                      placeholder="San Francisco"
-                    />
+                    <Input id="city" {...register('city')} className="h-9 text-[13px]" placeholder="San Francisco" />
                   </div>
                 </div>
               </div>
+
             </div>
           </form>
         </ScrollArea>
 
         <DialogFooter className="px-6 py-4 border-t border-[#E9EAEC] bg-[#F9FAFB]">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onClose}
-            className="h-9 text-[13px]"
-          >
+          <Button type="button" variant="outline" size="sm" onClick={onClose} className="h-9 text-[13px]">
             Cancel
           </Button>
           <Button
@@ -377,17 +311,32 @@ export default function EditUserModal({ user, open, onClose }: EditUserModalProp
             disabled={isLoading || !isDirty}
             className="h-9 text-[13px] min-w-[110px]"
           >
-            {isLoading ? (
-              <>
-                <Loader2 size={13} className="mr-1.5 animate-spin" />
-                Saving…
-              </>
-            ) : (
-              'Save Changes'
-            )}
+            {isLoading
+              ? <><Loader2 size={13} className="mr-1.5 animate-spin" />Saving…</>
+              : 'Save Changes'}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   )
+}
+
+function getDefaults(user: User | null): FormValues {
+  const role = user ? getUserRole(user.id) : 'viewer'
+  const { firstName, lastName } = user ? splitName(user.name) : { firstName: '', lastName: '' }
+  return {
+    firstName,
+    lastName,
+    username: user?.username ?? '',
+    email: user?.email ?? '',
+    phone: user?.phone ?? '',
+    website: user?.website ?? '',
+    role,
+    status: user ? getUserStatus(user.id) : 'active',
+    companyName: user?.company.name ?? '',
+    city: user?.address.city ?? '',
+    canManageUsers: role === 'admin',
+    canViewReports: role !== 'viewer',
+    canExportData: role === 'admin',
+  }
 }

@@ -1,13 +1,6 @@
 import { useState, useMemo } from 'react'
-import {
-  MoreHorizontal,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  Pencil,
-  Trash2,
-  Eye,
-} from 'lucide-react'
+import { MoreHorizontal, ArrowUpDown, ArrowUp, ArrowDown, Pencil, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   Table,
   TableBody,
@@ -37,9 +30,16 @@ import {
 } from '@/components/ui/pagination'
 import { cn } from '@/lib/utils'
 import type { User } from '../types'
-import { getUserRole, getUserStatus, formatUserId, type UserRole, type UserStatus } from '../utils'
+import { useUpdateUserMutation } from '../usersApi'
+import {
+  getUserRole,
+  getUserStatus,
+  type UserRole,
+  type UserStatus,
+} from '../utils'
 import type { FilterState } from './FilterToolbar'
 import UserAvatar from './UserAvatar'
+import EditableCell from './EditableCell'
 import EmptyState from './EmptyState'
 
 const STATUS_STYLES: Record<UserStatus, string> = {
@@ -60,17 +60,13 @@ const STATUS_DOT: Record<UserStatus, string> = {
   suspended: 'bg-red-500',
 }
 
-const ROLE_LABELS: Record<UserRole, string> = {
-  admin: 'Admin',
-  editor: 'Editor',
-  viewer: 'Viewer',
-}
+const ROLE_LABELS: Record<UserRole, string> = { admin: 'Admin', editor: 'Editor', viewer: 'Viewer' }
+const STATUS_LABELS: Record<UserStatus, string> = { active: 'Active', pending: 'Pending', suspended: 'Suspended' }
 
-const STATUS_LABELS: Record<UserStatus, string> = {
-  active: 'Active',
-  pending: 'Pending',
-  suspended: 'Suspended',
-}
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const validateEmail = (v: string) => (emailRegex.test(v) ? undefined : 'Invalid email address')
+const validateUsername = (v: string) => (/^\S+$/.test(v) ? undefined : 'No spaces allowed')
+const validateName = (v: string) => (v.trim().length > 0 ? undefined : 'Name is required')
 
 type SortKey = 'id' | 'name' | 'email' | 'company' | 'city' | 'role' | 'status'
 type SortDir = 'asc' | 'desc'
@@ -81,36 +77,29 @@ interface UsersTableProps {
   users: User[]
   isLoading: boolean
   filters: FilterState
-  onEdit: (user: User) => void
+  onEditAccess: (user: User) => void
   onDelete: (userId: number) => void
   onClearFilters: () => void
-}
-
-function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; sortDir: SortDir }) {
-  if (sortKey !== col) return <ArrowUpDown size={12} className="opacity-30" />
-  return sortDir === 'asc'
-    ? <ArrowUp size={12} className="text-indigo-500" />
-    : <ArrowDown size={12} className="text-indigo-500" />
 }
 
 function SkeletonRow() {
   return (
     <TableRow>
-      <TableCell className="w-10"><Skeleton className="h-4 w-4 rounded" /></TableCell>
+      <TableCell className="pl-4 w-10"><Skeleton className="h-4 w-4 rounded" /></TableCell>
       <TableCell>
         <div className="flex items-center gap-3">
           <Skeleton className="size-9 rounded-full shrink-0" />
           <div className="space-y-1.5">
             <Skeleton className="h-3.5 w-28" />
-            <Skeleton className="h-3 w-36" />
+            <Skeleton className="h-3 w-20" />
           </div>
         </div>
       </TableCell>
+      <TableCell><Skeleton className="h-3.5 w-36" /></TableCell>
       <TableCell><Skeleton className="h-5 w-14 rounded-full" /></TableCell>
       <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
       <TableCell><Skeleton className="h-3.5 w-24" /></TableCell>
       <TableCell><Skeleton className="h-3.5 w-20" /></TableCell>
-      <TableCell><Skeleton className="h-3.5 w-12" /></TableCell>
       <TableCell><Skeleton className="h-7 w-7 rounded-md" /></TableCell>
     </TableRow>
   )
@@ -120,14 +109,20 @@ export default function UsersTable({
   users,
   isLoading,
   filters,
-  onEdit,
+  onEditAccess,
   onDelete,
   onClearFilters,
 }: UsersTableProps) {
+  const [updateUser] = useUpdateUserMutation()
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [sortKey, setSortKey] = useState<SortKey>('id')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [page, setPage] = useState(1)
+
+  const handleUpdate = async (user: User, patch: Partial<User>, label: string) => {
+    await updateUser({ ...user, ...patch }).unwrap()
+    toast.success(`${label} updated`, { duration: 2000 })
+  }
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
@@ -138,7 +133,7 @@ export default function UsersTable({
   const filtered = useMemo(() => {
     const q = filters.search.toLowerCase()
     return users.filter((u) => {
-      const matchesSearch =
+      const matchSearch =
         !q ||
         u.name.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q) ||
@@ -147,16 +142,17 @@ export default function UsersTable({
         u.address.city.toLowerCase().includes(q)
       const role = getUserRole(u.id)
       const status = getUserStatus(u.id)
-      const matchesRole = filters.role === 'all' || role === filters.role
-      const matchesStatus = filters.status === 'all' || status === filters.status
-      return matchesSearch && matchesRole && matchesStatus
+      return (
+        matchSearch &&
+        (filters.role === 'all' || role === filters.role) &&
+        (filters.status === 'all' || status === filters.status)
+      )
     })
   }, [users, filters])
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
-      let av: string | number
-      let bv: string | number
+      let av: string | number, bv: string | number
       switch (sortKey) {
         case 'id': av = a.id; bv = b.id; break
         case 'name': av = a.name; bv = b.name; break
@@ -175,29 +171,19 @@ export default function UsersTable({
 
   const totalPages = Math.ceil(sorted.length / PAGE_SIZE)
   const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-
   const allSelected = paginated.length > 0 && paginated.every((u) => selected.has(u.id))
   const someSelected = paginated.some((u) => selected.has(u.id)) && !allSelected
 
   const toggleAll = () => {
-    if (allSelected) {
-      setSelected((s) => { const n = new Set(s); paginated.forEach((u) => n.delete(u.id)); return n })
-    } else {
-      setSelected((s) => { const n = new Set(s); paginated.forEach((u) => n.add(u.id)); return n })
-    }
+    if (allSelected) setSelected((s) => { const n = new Set(s); paginated.forEach((u) => n.delete(u.id)); return n })
+    else setSelected((s) => { const n = new Set(s); paginated.forEach((u) => n.add(u.id)); return n })
   }
-
-  const toggleOne = (id: number) => {
-    setSelected((s) => {
-      const n = new Set(s)
-      n.has(id) ? n.delete(id) : n.add(id)
-      return n
-    })
-  }
+  const toggleOne = (id: number) =>
+    setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
 
   const selectedCount = [...selected].filter((id) => paginated.some((u) => u.id === id)).length
 
-  function SortableHead({ col, label, className }: { col: SortKey; label: string; className?: string }) {
+  function SortHead({ col, label, className }: { col: SortKey; label: string; className?: string }) {
     return (
       <TableHead className={className}>
         <button
@@ -208,7 +194,11 @@ export default function UsersTable({
           )}
         >
           {label}
-          <SortIcon col={col} sortKey={sortKey} sortDir={sortDir} />
+          {sortKey === col
+            ? sortDir === 'asc'
+              ? <ArrowUp size={12} className="text-indigo-500" />
+              : <ArrowDown size={12} className="text-indigo-500" />
+            : <ArrowUpDown size={12} className="opacity-30" />}
         </button>
       </TableHead>
     )
@@ -237,145 +227,161 @@ export default function UsersTable({
       <Table>
         <TableHeader>
           <TableRow className="bg-[#F9FAFB] hover:bg-[#F9FAFB] border-b border-[#E9EAEC]">
-            <TableHead className="w-10 pl-4">
+            <TableHead className="pl-4 w-10">
               <Checkbox
                 checked={allSelected ? true : someSelected ? 'indeterminate' : false}
                 onCheckedChange={toggleAll}
                 aria-label="Select all"
               />
             </TableHead>
-            <SortableHead col="name" label="User" className="min-w-[220px]" />
-            <SortableHead col="role" label="Role" />
-            <SortableHead col="status" label="Status" />
-            <SortableHead col="company" label="Company" />
-            <SortableHead col="city" label="Location" />
-            <TableHead className="text-xs font-semibold text-muted-foreground">ID</TableHead>
+            <SortHead col="name" label="User" className="min-w-[180px]" />
+            <SortHead col="email" label="Email" className="min-w-[200px]" />
+            <SortHead col="role" label="Role" />
+            <SortHead col="status" label="Status" />
+            <SortHead col="company" label="Company" />
+            <SortHead col="city" label="Location" />
             <TableHead className="w-10" />
           </TableRow>
         </TableHeader>
 
         <TableBody>
-          {isLoading ? (
-            Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)
-          ) : paginated.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={8} className="p-0">
-                <EmptyState
-                  type={users.length === 0 ? 'no-users' : 'no-results'}
-                  onClearFilters={onClearFilters}
-                />
-              </TableCell>
-            </TableRow>
-          ) : (
-            paginated.map((user) => {
-              const role = getUserRole(user.id)
-              const status = getUserStatus(user.id)
-              const isSelected = selected.has(user.id)
-
-              return (
-                <TableRow
-                  key={user.id}
-                  className={cn(
-                    'group border-b border-[#F3F4F6] transition-colors',
-                    isSelected ? 'bg-indigo-50/60' : 'hover:bg-[#FAFBFF]',
-                  )}
-                >
-                  <TableCell className="pl-4">
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={() => toggleOne(user.id)}
-                      aria-label={`Select ${user.name}`}
+          {isLoading
+            ? Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)
+            : paginated.length === 0
+              ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="p-0">
+                    <EmptyState
+                      type={users.length === 0 ? 'no-users' : 'no-results'}
+                      onClearFilters={onClearFilters}
                     />
-                  </TableCell>
-
-                  {/* User cell */}
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <UserAvatar name={user.name} size="md" />
-                      <div className="min-w-0">
-                        <p className="text-[13.5px] font-medium text-foreground leading-snug truncate">
-                          {user.name}
-                        </p>
-                        <p className="text-[12px] text-muted-foreground truncate">{user.email}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-
-                  {/* Role badge */}
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={cn('text-[11px] font-medium px-2 py-0.5', ROLE_STYLES[role])}
-                    >
-                      {ROLE_LABELS[role]}
-                    </Badge>
-                  </TableCell>
-
-                  {/* Status badge */}
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        'text-[11px] font-medium px-2 py-0.5 flex items-center gap-1.5 w-fit',
-                        STATUS_STYLES[status],
-                      )}
-                    >
-                      <span className={cn('size-1.5 rounded-full shrink-0', STATUS_DOT[status])} />
-                      {STATUS_LABELS[status]}
-                    </Badge>
-                  </TableCell>
-
-                  {/* Company */}
-                  <TableCell className="text-[13px] text-foreground">{user.company.name}</TableCell>
-
-                  {/* Location */}
-                  <TableCell className="text-[13px] text-muted-foreground">{user.address.city}</TableCell>
-
-                  {/* ID */}
-                  <TableCell>
-                    <span className="font-mono text-[11px] text-muted-foreground">{formatUserId(user.id)}</span>
-                  </TableCell>
-
-                  {/* Actions */}
-                  <TableCell className="pr-3">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-7 opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 text-muted-foreground hover:text-foreground"
-                        >
-                          <MoreHorizontal size={14} />
-                          <span className="sr-only">Open menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44">
-                        <DropdownMenuItem
-                          className="text-[13px] gap-2"
-                          onClick={() => onEdit(user)}
-                        >
-                          <Pencil size={13} />
-                          Edit user
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-[13px] gap-2">
-                          <Eye size={13} />
-                          View profile
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-[13px] gap-2 text-red-600 focus:text-red-600 focus:bg-red-50"
-                          onClick={() => onDelete(user.id)}
-                        >
-                          <Trash2 size={13} />
-                          Delete user
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               )
-            })
-          )}
+              : paginated.map((user) => {
+                const role = getUserRole(user.id)
+                const status = getUserStatus(user.id)
+                const isSelected = selected.has(user.id)
+
+                return (
+                  <TableRow
+                    key={user.id}
+                    className={cn(
+                      'group border-b border-[#F3F4F6] transition-colors',
+                      isSelected ? 'bg-indigo-50/50' : 'hover:bg-[#FAFBFF]',
+                    )}
+                  >
+                    <TableCell className="pl-4 w-10">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleOne(user.id)}
+                        aria-label={`Select ${user.name}`}
+                      />
+                    </TableCell>
+
+                    {/* User: avatar + editable name + editable @username */}
+                    <TableCell>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <UserAvatar name={user.name} size="md" className="shrink-0" />
+                        <div className="min-w-0 space-y-0.5">
+                          <EditableCell
+                            value={user.name}
+                            validate={validateName}
+                            onSave={(v) => handleUpdate(user, { name: v }, 'Name')}
+                            className="text-[13.5px] font-medium text-foreground"
+                            inputClassName="font-medium"
+                          />
+                          <EditableCell
+                            value={user.username}
+                            validate={validateUsername}
+                            onSave={(v) => handleUpdate(user, { username: v }, 'Username')}
+                            className="text-[11.5px] text-muted-foreground font-mono"
+                            inputClassName="text-[11.5px] font-mono py-0"
+                          />
+                        </div>
+                      </div>
+                    </TableCell>
+
+                    {/* Editable email */}
+                    <TableCell>
+                      <EditableCell
+                        value={user.email}
+                        type="email"
+                        validate={validateEmail}
+                        onSave={(v) => handleUpdate(user, { email: v }, 'Email')}
+                        className="text-[13px] text-muted-foreground"
+                      />
+                    </TableCell>
+
+                    {/* Role badge */}
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={cn('text-[11px] font-medium px-2 py-0.5', ROLE_STYLES[role])}
+                      >
+                        {ROLE_LABELS[role]}
+                      </Badge>
+                    </TableCell>
+
+                    {/* Status badge */}
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          'text-[11px] font-medium px-2 py-0.5 flex items-center gap-1.5 w-fit',
+                          STATUS_STYLES[status],
+                        )}
+                      >
+                        <span className={cn('size-1.5 rounded-full shrink-0', STATUS_DOT[status])} />
+                        {STATUS_LABELS[status]}
+                      </Badge>
+                    </TableCell>
+
+                    {/* Company */}
+                    <TableCell className="text-[13px] text-foreground">{user.company.name}</TableCell>
+
+                    {/* Location */}
+                    <TableCell className="text-[13px] text-muted-foreground">{user.address.city}</TableCell>
+
+                    {/* Actions kebab */}
+                    <TableCell className="pr-3">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                              'size-7 text-muted-foreground',
+                              'opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100',
+                              'hover:text-foreground hover:bg-muted transition-opacity',
+                            )}
+                          >
+                            <MoreHorizontal size={14} />
+                            <span className="sr-only">Row actions</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem
+                            className="text-[13px] gap-2"
+                            onClick={() => onEditAccess(user)}
+                          >
+                            <Pencil size={13} />
+                            Edit user
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-[13px] gap-2 text-red-600 focus:text-red-600 focus:bg-red-50"
+                            onClick={() => onDelete(user.id)}
+                          >
+                            <Trash2 size={13} />
+                            Delete user
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
         </TableBody>
       </Table>
 
@@ -383,18 +389,14 @@ export default function UsersTable({
       {!isLoading && sorted.length > PAGE_SIZE && (
         <div className="flex items-center justify-between px-4 py-3 border-t border-[#E9EAEC]">
           <p className="text-[13px] text-muted-foreground">
-            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, sorted.length)} of{' '}
-            {sorted.length} users
+            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, sorted.length)} of {sorted.length} users
           </p>
           <Pagination className="w-auto mx-0">
             <PaginationContent className="gap-1">
               <PaginationItem>
                 <PaginationPrevious
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className={cn(
-                    'h-8 text-[13px]',
-                    page === 1 && 'pointer-events-none opacity-40',
-                  )}
+                  className={cn('h-8 text-[13px]', page === 1 && 'pointer-events-none opacity-40')}
                 />
               </PaginationItem>
               {Array.from({ length: totalPages }).map((_, i) => (
@@ -411,10 +413,7 @@ export default function UsersTable({
               <PaginationItem>
                 <PaginationNext
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  className={cn(
-                    'h-8 text-[13px]',
-                    page === totalPages && 'pointer-events-none opacity-40',
-                  )}
+                  className={cn('h-8 text-[13px]', page === totalPages && 'pointer-events-none opacity-40')}
                 />
               </PaginationItem>
             </PaginationContent>
