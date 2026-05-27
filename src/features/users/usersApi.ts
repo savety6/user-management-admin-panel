@@ -12,10 +12,7 @@ export const usersApi = createApi({
       transformResponse: (raw) => UsersSchema.parse(raw),
       providesTags: (result) =>
         result
-          ? [
-              ...result.map(({ id }) => ({ type: 'User' as const, id })),
-              { type: 'User', id: 'LIST' },
-            ]
+          ? [...result.map(({ id }) => ({ type: 'User' as const, id })), { type: 'User', id: 'LIST' }]
           : [{ type: 'User', id: 'LIST' }],
     }),
     getUserById: builder.query<User, number>({
@@ -31,14 +28,35 @@ export const usersApi = createApi({
     updateUser: builder.mutation<User, User>({
       query: ({ id, ...body }) => ({ url: `/users/${id}`, method: 'PUT', body }),
       transformResponse: (raw) => UserSchema.parse(raw),
-      invalidatesTags: (_result, _error, { id }) => [{ type: 'User', id }],
+      async onQueryStarted(user, { dispatch, queryFulfilled }) {
+        const patch = dispatch(
+          usersApi.util.updateQueryData('getUsers', undefined, (draft) => {
+            const idx = draft.findIndex((u) => u.id === user.id)
+            if (idx !== -1) Object.assign(draft[idx], user)
+          }),
+        )
+        try {
+          await queryFulfilled
+        } catch {
+          patch.undo()
+        }
+      },
     }),
     deleteUser: builder.mutation<void, number>({
       query: (id) => ({ url: `/users/${id}`, method: 'DELETE' }),
-      invalidatesTags: (_result, _error, id) => [
-        { type: 'User', id },
-        { type: 'User', id: 'LIST' },
-      ],
+      async onQueryStarted(id, { dispatch, queryFulfilled }) {
+        const patch = dispatch(
+          usersApi.util.updateQueryData('getUsers', undefined, (draft) => {
+            const idx = draft.findIndex((u) => u.id === id)
+            if (idx !== -1) draft.splice(idx, 1)
+          }),
+        )
+        try {
+          await queryFulfilled
+        } catch {
+          patch.undo()
+        }
+      },
     }),
   }),
 })
