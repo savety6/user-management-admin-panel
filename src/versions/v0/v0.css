@@ -1,0 +1,18 @@
+.v0-app {
+  --app-sidebar-item-active-bg: rgba(255, 255, 255, 0.08);
+  --app-sidebar-item-active-text: #ffffff;
+  --app-sidebar-item-hover-bg: rgba(255, 255, 255, 0.04);
+  --app-sidebar-item-hover-text: #e5e7eb;
+  --app-sidebar-item-text: #9ca3af;
+  --app-sidebar-item-indicator: #818cf8;
+  --app-sidebar-section-label: #4b5563;
+  --app-sidebar-meta-text: #6b7280;
+}
+
+.v0-app .v0-placeholder {
+  max-width: 28rem;
+}
+
+.v0-app .page-enter {
+  animation-duration: 0.24s;
+}

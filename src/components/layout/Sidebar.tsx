@@ -1,67 +1,61 @@
+import type { ElementType } from 'react'
 import {
-  LayoutDashboard,
-  Users,
-  UsersRound,
-  ShieldCheck,
-  FileText,
-  Settings,
   Hexagon,
   ChevronUp,
 } from 'lucide-react'
+import { NavLink, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-
-export type Route = 'dashboard' | 'users' | 'teams' | 'roles' | 'audit' | 'settings'
+import {
+  type AppRoute,
+  PRIMARY_NAV,
+  SECONDARY_NAV,
+  getRouteHref,
+  isRouteActive,
+} from './navigation'
 
 interface SidebarProps {
-  active: Route
-  onNavigate: (route: Route) => void
+  basePath: string
 }
-
-const PRIMARY_NAV = [
-  { id: 'dashboard' as Route, label: 'Overview', icon: LayoutDashboard },
-  { id: 'users' as Route, label: 'Users', icon: Users },
-  { id: 'teams' as Route, label: 'Teams', icon: UsersRound },
-  { id: 'roles' as Route, label: 'Roles & Permissions', icon: ShieldCheck },
-  { id: 'audit' as Route, label: 'Audit Log', icon: FileText },
-]
-
-const SECONDARY_NAV = [
-  { id: 'settings' as Route, label: 'Settings', icon: Settings },
-]
 
 interface NavItemProps {
-  id: Route
+  href: string
   label: string
-  icon: React.ElementType
+  icon: ElementType
   isActive: boolean
-  onClick: () => void
 }
 
-function NavItem({ label, icon: Icon, isActive, onClick }: NavItemProps) {
+function NavItem({ href, label, icon: Icon, isActive }: NavItemProps) {
   return (
-    <button
-      onClick={onClick}
+    <NavLink
+      to={href}
       className={cn(
         'relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 text-left outline-none',
         isActive
-          ? 'text-white bg-white/8'
-          : 'text-[#9CA3AF] hover:text-[#E5E7EB] hover:bg-white/4',
+          ? 'bg-[var(--app-sidebar-item-active-bg)] text-[var(--app-sidebar-item-active-text)]'
+          : 'text-[var(--app-sidebar-item-text)] hover:bg-[var(--app-sidebar-item-hover-bg)] hover:text-[var(--app-sidebar-item-hover-text)]',
       )}
     >
       {isActive && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-r bg-[#818CF8]" />
+        <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r bg-[var(--app-sidebar-item-indicator)]" />
       )}
       <Icon
         size={15}
         strokeWidth={isActive ? 2 : 1.75}
-        className={isActive ? 'text-[#818CF8]' : 'text-current'}
+        className={isActive ? 'text-[var(--app-sidebar-item-indicator)]' : 'text-current'}
       />
       <span className="leading-none">{label}</span>
-    </button>
+    </NavLink>
   )
 }
 
-export default function Sidebar({ active, onNavigate }: SidebarProps) {
+function isItemActive(pathname: string, basePath: string, route: AppRoute) {
+  const normalizedPathname = pathname.endsWith('/') && pathname !== '/' ? pathname.slice(0, -1) : pathname
+  return isRouteActive(normalizedPathname, basePath, route)
+}
+
+export default function Sidebar({ basePath }: SidebarProps) {
+  const location = useLocation()
+
   return (
     <aside
       className="sidebar-scroll flex h-full w-60 shrink-0 flex-col overflow-y-auto"
@@ -77,37 +71,39 @@ export default function Sidebar({ active, onNavigate }: SidebarProps) {
         </div>
         <div className="min-w-0">
           <div className="text-[13px] font-semibold text-white tracking-tight">AdminPanel</div>
-          <div className="text-[10px] text-[#6B7280] mt-0.5">Enterprise · v1.0</div>
+          <div className="mt-0.5 text-[10px] text-[var(--app-sidebar-meta-text)]">Enterprise · v0</div>
         </div>
       </div>
 
       {/* Primary nav */}
       <nav className="flex flex-1 flex-col px-3 pt-4 pb-2">
-        <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-[#4B5563]">
+        <p className="mb-2 px-3 text-[10px] font-semibold tracking-widest text-[var(--app-sidebar-section-label)] uppercase">
           Management
         </p>
         <div className="flex flex-col gap-0.5">
           {PRIMARY_NAV.map((item) => (
             <NavItem
               key={item.id}
-              {...item}
-              isActive={active === item.id}
-              onClick={() => onNavigate(item.id)}
+              href={getRouteHref(basePath, item.id)}
+              label={item.label}
+              icon={item.icon}
+              isActive={isItemActive(location.pathname, basePath, item.id)}
             />
           ))}
         </div>
 
         <div className="mt-auto pt-4">
-          <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-[#4B5563]">
+          <p className="mb-2 px-3 text-[10px] font-semibold tracking-widest text-[var(--app-sidebar-section-label)] uppercase">
             System
           </p>
           <div className="flex flex-col gap-0.5">
             {SECONDARY_NAV.map((item) => (
               <NavItem
                 key={item.id}
-                {...item}
-                isActive={active === item.id}
-                onClick={() => onNavigate(item.id)}
+                href={getRouteHref(basePath, item.id)}
+                label={item.label}
+                icon={item.icon}
+                isActive={isItemActive(location.pathname, basePath, item.id)}
               />
             ))}
           </div>
@@ -116,15 +112,15 @@ export default function Sidebar({ active, onNavigate }: SidebarProps) {
 
       {/* User profile */}
       <div style={{ borderTop: '1px solid var(--sidebar-border)' }} className="px-3 py-3">
-        <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-white/4 text-left">
+        <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-[var(--app-sidebar-item-hover-bg)]">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">
             AD
           </div>
           <div className="min-w-0 flex-1">
             <div className="truncate text-[13px] font-medium text-white">Admin User</div>
-            <div className="truncate text-[11px] text-[#6B7280]">admin@panel.dev</div>
+            <div className="truncate text-[11px] text-[var(--app-sidebar-meta-text)]">admin@panel.dev</div>
           </div>
-          <ChevronUp size={13} className="shrink-0 text-[#4B5563]" />
+          <ChevronUp size={13} className="shrink-0 text-[var(--app-sidebar-section-label)]" />
         </button>
       </div>
     </aside>

@@ -1,0 +1,36 @@
+.v1-app {
+  --background: #0a1020;
+  --foreground: #f8fafc;
+  --card: rgba(15, 23, 42, 0.76);
+  --card-foreground: #f8fafc;
+  --muted: rgba(148, 163, 184, 0.14);
+  --muted-foreground: #cbd5e1;
+  --secondary: rgba(96, 165, 250, 0.16);
+  --secondary-foreground: #dbeafe;
+  --border: rgba(148, 163, 184, 0.22);
+  --input: rgba(148, 163, 184, 0.22);
+  --primary: #38bdf8;
+  --primary-foreground: #082f49;
+  min-height: 100%;
+  background:
+    radial-gradient(circle at top, rgba(56, 189, 248, 0.22), transparent 30%),
+    linear-gradient(180deg, #020617 0%, #0f172a 100%);
+  color: var(--foreground);
+}
+
+.v1-app .v1-card {
+  backdrop-filter: blur(18px);
+  border-radius: 1.5rem;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.84), rgba(15, 23, 42, 0.66));
+  box-shadow: 0 24px 80px rgba(2, 6, 23, 0.45);
+}
+
+.v1-app .v1-badge {
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  background: rgba(56, 189, 248, 0.14);
+  color: #e0f2fe;
+}
+
+.v1-app .v1-cta {
+  box-shadow: 0 12px 30px rgba(14, 165, 233, 0.25);
+}
