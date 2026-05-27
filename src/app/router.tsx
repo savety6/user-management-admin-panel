@@ -4,6 +4,7 @@ import V0App from '@/versions/v0/V0App'
 import V0PlaceholderPage from '@/versions/v0/V0PlaceholderPage'
 import V1App from '@/versions/v1/V1App'
 import V1EmptyState from '@/versions/v1/components/V1EmptyState'
+import V1UsersPage from '@/versions/v1/pages/V1UsersPage'
 
 function createV0Routes() {
   return [
@@ -54,7 +55,13 @@ export const appRouter = createBrowserRouter([
     path: '/v1',
     element: <V1App />,
     children: [
-      { index: true, element: <V1EmptyState /> },
+      { index: true, element: <Navigate to="/v1/users" replace /> },
+      { path: 'users', element: <V1UsersPage /> },
+      { path: 'dashboard', element: <V1EmptyState /> },
+      { path: 'teams', element: <V1EmptyState /> },
+      { path: 'roles', element: <V1EmptyState /> },
+      { path: 'audit', element: <V1EmptyState /> },
+      { path: 'settings', element: <V1EmptyState /> },
       { path: '*', element: <V1EmptyState /> },
     ],
   },
